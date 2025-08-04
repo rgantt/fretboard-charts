@@ -9,6 +9,8 @@ __author__ = "Guitar Chord Generator Project"
 
 from .music_theory import Note, Chord, ChordQuality
 from .chord_parser import ChordParser, parse_chord, quick_parse, ChordParseError
+from .fretboard import FretPosition, GuitarTuning, Fretboard, STANDARD_TUNING, DROP_D_TUNING
+from .fingering import Fingering, FingerAssignment, FingeringValidator
 
 __all__ = [
     "Note",
@@ -17,5 +19,13 @@ __all__ = [
     "ChordParser",
     "parse_chord",
     "quick_parse",
-    "ChordParseError"
+    "ChordParseError",
+    "FretPosition",
+    "GuitarTuning",
+    "Fretboard",
+    "STANDARD_TUNING",
+    "DROP_D_TUNING",
+    "Fingering",
+    "FingerAssignment",
+    "FingeringValidator"
 ]
