@@ -11,6 +11,8 @@ from .music_theory import Note, Chord, ChordQuality
 from .chord_parser import ChordParser, parse_chord, quick_parse, ChordParseError
 from .fretboard import FretPosition, GuitarTuning, Fretboard, STANDARD_TUNING, DROP_D_TUNING
 from .fingering import Fingering, FingerAssignment, FingeringValidator
+from .fingering_generator import FingeringGenerator, GenerationConfig, generate_chord_fingerings
+from .chord_patterns import ChordPattern, ChordPatternDatabase, CHORD_PATTERNS
 
 __all__ = [
     "Note",
@@ -27,5 +29,11 @@ __all__ = [
     "DROP_D_TUNING",
     "Fingering",
     "FingerAssignment",
-    "FingeringValidator"
+    "FingeringValidator",
+    "FingeringGenerator",
+    "GenerationConfig",
+    "generate_chord_fingerings",
+    "ChordPattern",
+    "ChordPatternDatabase",
+    "CHORD_PATTERNS"
 ]

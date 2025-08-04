@@ -326,8 +326,12 @@ class FingeringValidator:
         # Musical quality checks
         musical_score = self._check_musical_quality(fingering, results)
         
-        # Overall score
-        results['score'] = (playability_score + musical_score) / 2
+        # Standardness checks (how well it matches expected patterns)
+        standardness_score = self._check_standardness(fingering, results)
+        
+        # Overall score with weighted components
+        # Standardness is heavily weighted for common chords
+        results['score'] = (playability_score * 0.25 + musical_score * 0.25 + standardness_score * 0.5)
         results['is_playable'] = playability_score > 0.3  # Threshold for playability
         
         return results
@@ -416,6 +420,108 @@ class FingeringValidator:
         
         return True
     
+    def _check_standardness(self, fingering: Fingering, results: Dict) -> float:
+        """
+        Check how well the fingering matches standard/expected patterns.
+        
+        This gives bonus points for fingerings that match what guitarists expect
+        and commonly use, making the results more musically intelligent.
+        """
+        score = 0.5  # Base score
+        
+        if not fingering.chord:
+            return score
+        
+        # Import here to avoid circular imports
+        from .chord_patterns import CHORD_PATTERNS
+        
+        # Convert fingering to shape for comparison
+        fingering_shape = fingering.get_chord_shape()
+        
+        # Check if this matches a known pattern
+        matching_patterns = CHORD_PATTERNS.find_matching_patterns(
+            fingering.chord.root, fingering.chord.quality
+        )
+        
+        for pattern in matching_patterns:
+            if pattern.frets == fingering_shape:
+                # Exact match with a standard pattern - huge bonus!
+                score = 1.0
+                results['warnings'].append(f"Matches standard {pattern.name} pattern")
+                break
+        else:
+            # Check for partial matches or good characteristics
+            self._check_pattern_characteristics(fingering, results, score)
+        
+        # Completeness bonus - prefer fingerings with more chord tones
+        num_notes = len(fingering.positions)
+        if num_notes >= 5:
+            score += 0.2  # Full 5-6 note chords
+        elif num_notes >= 4:
+            score += 0.1  # Good 4 note chords
+        elif num_notes <= 3:
+            score -= 0.1  # Penalize incomplete chords
+        
+        # Open position bonus for common open chords
+        if self._is_common_open_chord(fingering):
+            if fingering.characteristics.get('is_open_position', False):
+                score += 0.15
+            else:
+                score -= 0.1  # Penalize if common open chord isn't in open position
+        
+        # Bass note correctness bonus
+        bass_note = fingering.get_bass_note()
+        if bass_note and fingering.chord:
+            if bass_note.pitch_class == fingering.chord.root.pitch_class:
+                score += 0.1  # Root in bass is good
+            elif fingering.chord.bass and bass_note.pitch_class == fingering.chord.bass.pitch_class:
+                score += 0.1  # Correct slash chord bass
+            else:
+                score -= 0.05  # Wrong bass note
+        
+        return max(0.0, min(1.0, score))
+    
+    def _check_pattern_characteristics(self, fingering: Fingering, results: Dict, base_score: float) -> float:
+        """Check for good pattern characteristics even if not exact match"""
+        score = base_score
+        
+        # Look for barre chord characteristics
+        if fingering.characteristics.get('is_barre_chord', False):
+            # Barre chords should span multiple strings at same fret
+            score += 0.1
+            results['warnings'].append("Barre chord pattern detected")
+        
+        # Check for logical fingering progression
+        fretted_positions = [pos for pos in fingering.positions if pos.fret > 0]
+        if fretted_positions:
+            frets = sorted([pos.fret for pos in fretted_positions])
+            if len(frets) > 1:
+                fret_span = max(frets) - min(frets)
+                if fret_span <= 3:  # Good hand position
+                    score += 0.05
+        
+        return score
+    
+    def _is_common_open_chord(self, fingering: Fingering) -> bool:
+        """Check if this represents one of the common open chords"""
+        if not fingering.chord:
+            return False
+        
+        # Common open chord roots
+        common_open_roots = ['C', 'G', 'D', 'A', 'E', 'F']  # F is harder but still common
+        common_open_minor_roots = ['A', 'E', 'D']
+        
+        root_name = fingering.chord.root.name
+        
+        if fingering.chord.quality.name in ['MAJOR']:
+            return root_name in common_open_roots
+        elif fingering.chord.quality.name in ['MINOR']:
+            return root_name in common_open_minor_roots
+        elif fingering.chord.quality.name in ['DOMINANT_SEVENTH']:
+            return root_name in ['G', 'C', 'D', 'A', 'E']  # Common 7th chords
+        
+        return False
+    
     def rank_fingerings(self, fingerings: List[Fingering]) -> List[Fingering]:
         """
         Rank a list of fingerings by quality and playability.
@@ -433,14 +539,18 @@ class FingeringValidator:
             
             score = validation['score']
             
-            # Bonus for common characteristics
-            if fingering.characteristics.get('is_open_position', False):
-                score += 0.1
-            if fingering.characteristics.get('has_open_strings', False):
+            # Additional ranking bonuses (these stack with the standardness score)
+            # Standard patterns already get heavy bonuses in standardness scoring
+            
+            # Small bonus for very low difficulty (ease of play)
+            if fingering.difficulty < 0.1:
                 score += 0.05
             
-            # Penalty for difficulty
-            score -= fingering.difficulty * 0.2
+            # Small penalty for high difficulty, but don't penalize standard patterns too much
+            if fingering.difficulty > 0.5:
+                score -= fingering.difficulty * 0.1
+            else:
+                score -= fingering.difficulty * 0.05
             
             return score
         
