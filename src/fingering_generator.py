@@ -95,6 +95,9 @@ class FingeringGenerator:
         pattern_fingerings = self._generate_from_patterns(chord, config)
         candidates.extend(pattern_fingerings)
         
+        chord_name = str(chord)
+        
+        
         # Then generate using position-based search
         # Prioritize regions: open first, then low, then mid
         for region in [FretboardRegion.OPEN, FretboardRegion.LOW, FretboardRegion.MID]:
@@ -102,11 +105,31 @@ class FingeringGenerator:
             candidates.extend(region_fingerings)
         
         # Step 3: Post-process finger assignments
+        # Only assign fingers for fingerings that don't already have complete assignments
         for fingering in candidates:
-            self._assign_fingers(fingering)
+            # Skip if this already has comprehensive finger assignments (from patterns)
+            has_fretted_assignments = any(
+                finger not in [FingerAssignment.OPEN, FingerAssignment.MUTED] 
+                for finger in fingering.finger_assignments.values()
+            )
+            
+            # If it has good assignments for all fretted notes, don't override
+            fretted_strings = {pos.string for pos in fingering.positions if pos.fret > 0}
+            assigned_fretted_strings = {
+                string for string, finger in fingering.finger_assignments.items() 
+                if finger not in [FingerAssignment.OPEN, FingerAssignment.MUTED]
+            }
+            
+            if has_fretted_assignments and fretted_strings.issubset(assigned_fretted_strings):
+                # Pattern has good assignments, don't override
+                continue
+            else:
+                # Need to assign fingers
+                self._assign_fingers(fingering)
         
         # Step 4: Validate and filter
         valid_fingerings = []
+        
         for fingering in candidates:
             validation = self.validator.validate_fingering(fingering)
             if validation['is_playable'] and validation['score'] > 0.3:
@@ -114,6 +137,7 @@ class FingeringGenerator:
         
         # Step 5: Rank and return top results
         ranked_fingerings = self.validator.rank_fingerings(valid_fingerings)
+        
         
         return ranked_fingerings[:config.max_results]
     
@@ -201,18 +225,26 @@ class FingeringGenerator:
             try:
                 fingering = CHORD_PATTERNS.pattern_to_fingering(pattern, chord)
                 
+                
                 # Validate the pattern fingering
                 if fingering.is_playable() and len(fingering.positions) >= config.min_required_tones:
                     # Check if it contains the required chord tones
                     chord_notes = chord.get_notes()
-                    if fingering.contains_notes(chord_notes):
+                    contains_required = fingering.contains_notes(chord_notes)
+                    
+                    # For 7th chords, allow patterns that omit the 5th (common in guitar voicings)
+                    if not contains_required and chord.quality.name == 'DOMINANT_SEVENTH':
+                        # Check if it contains root, 3rd, and 7th (allow omitting 5th)
+                        essential_notes = [chord.root, chord.get_notes()[1], chord.get_notes()[3]]  # Root, 3rd, 7th
+                        contains_required = fingering.contains_notes(essential_notes)
+                    
+                    if contains_required:
                         pattern_fingerings.append(fingering)
                         
                         # Limit pattern results
                         if len(pattern_fingerings) >= 3:
                             break
-            except Exception:
-                # Skip patterns that fail to convert
+            except Exception as e:
                 continue
         
         return pattern_fingerings

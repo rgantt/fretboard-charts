@@ -13,6 +13,10 @@ from .fretboard import FretPosition, GuitarTuning, Fretboard, STANDARD_TUNING, D
 from .fingering import Fingering, FingerAssignment, FingeringValidator
 from .fingering_generator import FingeringGenerator, GenerationConfig, generate_chord_fingerings
 from .chord_patterns import ChordPattern, ChordPatternDatabase, CHORD_PATTERNS
+from .diagram_generator import (
+    ChordDiagramGenerator, DiagramStyle, generate_chord_diagram, 
+    generate_chord_progression_diagram
+)
 
 __all__ = [
     "Note",
@@ -35,5 +39,9 @@ __all__ = [
     "generate_chord_fingerings",
     "ChordPattern",
     "ChordPatternDatabase",
-    "CHORD_PATTERNS"
+    "CHORD_PATTERNS",
+    "ChordDiagramGenerator",
+    "DiagramStyle",
+    "generate_chord_diagram",
+    "generate_chord_progression_diagram"
 ]

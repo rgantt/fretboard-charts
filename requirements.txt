@@ -1,6 +1,7 @@
 # Core dependencies for guitar chord fingering generator
 pytest>=7.0.0
 click>=8.0.0
+matplotlib>=3.5.0
 
 # Optional: music21 library for extended music theory support
 # music21>=8.0.0

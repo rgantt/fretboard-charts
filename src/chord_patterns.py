@@ -143,6 +143,25 @@ class ChordPatternDatabase:
                     1: FingerAssignment.OPEN,    # open
                 },
                 pattern_type=PatternType.OPEN
+            ),
+            
+            # F major (1-3-3-2-1-1) - Barre chord
+            ChordPattern(
+                name="F_major_barre",
+                quality=ChordQuality.MAJOR,
+                frets=[1, 3, 3, 2, 1, 1],  # 1-3-3-2-1-1
+                root_string=6,  # Root F on 6th string, 1st fret
+                root_fret=1,
+                finger_assignments={
+                    6: FingerAssignment.INDEX,   # 1st fret (barre)
+                    5: FingerAssignment.RING,    # 3rd fret
+                    4: FingerAssignment.PINKY,   # 3rd fret
+                    3: FingerAssignment.MIDDLE,  # 2nd fret
+                    2: FingerAssignment.INDEX,   # 1st fret (barre)
+                    1: FingerAssignment.INDEX,   # 1st fret (barre)
+                },
+                pattern_type=PatternType.BARRE_E,
+                difficulty=0.5  # F barre is harder
             )
         ]
         
@@ -220,7 +239,7 @@ class ChordPatternDatabase:
                 pattern_type=PatternType.OPEN
             ),
             
-            # C7 (x-3-2-3-1-0)
+            # C7 (x-3-2-3-1-0) - standard open C7 without 5th
             ChordPattern(
                 name="open_C7",
                 quality=ChordQuality.DOMINANT_SEVENTH,
@@ -228,11 +247,62 @@ class ChordPatternDatabase:
                 root_string=5,  # Root C on 5th string, 3rd fret
                 root_fret=3,
                 finger_assignments={
-                    5: FingerAssignment.RING,    # 3rd fret
-                    4: FingerAssignment.INDEX,   # 2nd fret
-                    3: FingerAssignment.PINKY,   # 3rd fret
-                    2: FingerAssignment.MIDDLE,  # 1st fret
-                    1: FingerAssignment.OPEN,    # open
+                    5: FingerAssignment.RING,    # 3rd fret (C)
+                    4: FingerAssignment.INDEX,   # 2nd fret (E)
+                    3: FingerAssignment.PINKY,   # 3rd fret (Bb)
+                    2: FingerAssignment.MIDDLE,  # 1st fret (C)
+                    1: FingerAssignment.OPEN,    # open (E)
+                },
+                pattern_type=PatternType.OPEN
+            ),
+            
+            # D7 (x-x-0-2-1-2)
+            ChordPattern(
+                name="open_D7",
+                quality=ChordQuality.DOMINANT_SEVENTH,
+                frets=[None, None, 0, 2, 1, 2],  # x-x-0-2-1-2
+                root_string=4,  # Root D on 4th string, open
+                root_fret=0,
+                finger_assignments={
+                    4: FingerAssignment.OPEN,    # open (D)
+                    3: FingerAssignment.MIDDLE,  # 2nd fret (A)
+                    2: FingerAssignment.INDEX,   # 1st fret (C)
+                    1: FingerAssignment.RING,    # 2nd fret (F#)
+                },
+                pattern_type=PatternType.OPEN
+            ),
+            
+            # A7 (x-0-2-0-2-0)
+            ChordPattern(
+                name="open_A7",
+                quality=ChordQuality.DOMINANT_SEVENTH,
+                frets=[None, 0, 2, 0, 2, 0],  # x-0-2-0-2-0
+                root_string=5,  # Root A on 5th string, open
+                root_fret=0,
+                finger_assignments={
+                    5: FingerAssignment.OPEN,    # open (A)
+                    4: FingerAssignment.MIDDLE,  # 2nd fret (E)
+                    3: FingerAssignment.OPEN,    # open (G)
+                    2: FingerAssignment.RING,    # 2nd fret (C#)
+                    1: FingerAssignment.OPEN,    # open (E)
+                },
+                pattern_type=PatternType.OPEN
+            ),
+            
+            # E7 (0-2-0-1-0-0)
+            ChordPattern(
+                name="open_E7",
+                quality=ChordQuality.DOMINANT_SEVENTH,
+                frets=[0, 2, 0, 1, 0, 0],  # 0-2-0-1-0-0
+                root_string=6,  # Root E on 6th string, open
+                root_fret=0,
+                finger_assignments={
+                    6: FingerAssignment.OPEN,    # open (E)
+                    5: FingerAssignment.MIDDLE,  # 2nd fret (B)
+                    4: FingerAssignment.OPEN,    # open (D)
+                    3: FingerAssignment.INDEX,   # 1st fret (G#)
+                    2: FingerAssignment.OPEN,    # open (B)
+                    1: FingerAssignment.OPEN,    # open (E)
                 },
                 pattern_type=PatternType.OPEN
             ),
@@ -258,8 +328,8 @@ class ChordPatternDatabase:
         # Store patterns by quality
         self.patterns[ChordQuality.MAJOR] = open_major_patterns
         self.patterns[ChordQuality.MINOR] = open_minor_patterns
-        self.patterns[ChordQuality.DOMINANT_SEVENTH] = seventh_patterns[:2]  # G7, C7
-        self.patterns[ChordQuality.MINOR_SEVENTH] = seventh_patterns[2:]     # Am7
+        self.patterns[ChordQuality.DOMINANT_SEVENTH] = seventh_patterns[:5]  # G7, C7, D7, A7, E7
+        self.patterns[ChordQuality.MINOR_SEVENTH] = seventh_patterns[5:]     # Am7
     
     def get_patterns_for_quality(self, quality: ChordQuality) -> List[ChordPattern]:
         """Get all patterns for a given chord quality"""

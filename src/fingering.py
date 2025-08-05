@@ -125,22 +125,33 @@ class Fingering:
         if not self.finger_assignments:
             return False
         
-        # Group positions by finger
-        finger_positions = {}
+        # Group strings by finger and fret
+        finger_fret_strings = {}
         for string, finger in self.finger_assignments.items():
             if finger != FingerAssignment.OPEN and finger != FingerAssignment.MUTED:
-                if finger not in finger_positions:
-                    finger_positions[finger] = []
                 # Find the fret for this string
                 for pos in self.positions:
                     if pos.string == string:
-                        finger_positions[finger].append(pos.fret)
+                        key = (finger, pos.fret)
+                        if key not in finger_fret_strings:
+                            finger_fret_strings[key] = []
+                        finger_fret_strings[key].append(string)
                         break
         
         # Check if any finger plays the same fret on multiple strings
-        for finger, frets in finger_positions.items():
-            if len(frets) > 1 and len(set(frets)) == 1:  # Same fret, multiple strings
-                return True
+        # Require at least 3 strings for a true barre (eliminates Em false positive)
+        for (finger, fret), strings in finger_fret_strings.items():
+            if len(strings) >= 3:  # Need 3+ strings for barre
+                # For true barres, check if it's the index finger (most barres use index)
+                # and spans a significant portion of the neck
+                strings.sort()
+                string_span = strings[-1] - strings[0]  # Total span from lowest to highest string
+                
+                # True barres are typically:
+                # 1. Index finger (most common for barres)
+                # 2. Span at least 4 strings worth (string 6 to 2, or 5 to 1, etc.)
+                if finger == FingerAssignment.INDEX and string_span >= 4:
+                    return True
         
         return False
     
@@ -479,6 +490,10 @@ class FingeringValidator:
             else:
                 score -= 0.05  # Wrong bass note
         
+        # Penalize disjointed muted strings (difficult to strum)
+        muted_strings_penalty = self._check_muted_string_pattern(fingering)
+        score -= muted_strings_penalty
+        
         return max(0.0, min(1.0, score))
     
     def _check_pattern_characteristics(self, fingering: Fingering, results: Dict, base_score: float) -> float:
@@ -521,6 +536,47 @@ class FingeringValidator:
             return root_name in ['G', 'C', 'D', 'A', 'E']  # Common 7th chords
         
         return False
+    
+    def _check_muted_string_pattern(self, fingering: Fingering) -> float:
+        """
+        Check muted string pattern and return penalty for difficult strumming patterns.
+        
+        Args:
+            fingering: The fingering to check
+            
+        Returns:
+            Penalty score (0.0 = no penalty, higher = more penalty)
+        """
+        if not fingering.positions:
+            return 0.0
+        
+        # Find which strings are played vs muted
+        played_strings = {pos.string for pos in fingering.positions}
+        all_strings = set(range(1, 7))  # Strings 1-6
+        muted_strings = all_strings - played_strings
+        
+        if len(muted_strings) <= 1:
+            return 0.0  # No penalty for 0-1 muted strings
+        
+        # Check if muted strings are contiguous
+        muted_list = sorted(list(muted_strings))
+        
+        # Count gaps between muted strings
+        gaps = 0
+        for i in range(len(muted_list) - 1):
+            if muted_list[i+1] - muted_list[i] > 1:
+                gaps += 1
+        
+        # Penalty structure:
+        # - No penalty for contiguous muted strings (like power chords)
+        # - Light penalty for 1 gap (e.g., mute strings 6,4 but play 5)  
+        # - Heavy penalty for multiple gaps (very difficult to strum)
+        if gaps == 0:
+            return 0.0  # Contiguous muted strings are fine
+        elif gaps == 1:
+            return 0.15  # Light penalty for one gap
+        else:
+            return 0.3   # Heavy penalty for multiple gaps
     
     def rank_fingerings(self, fingerings: List[Fingering]) -> List[Fingering]:
         """

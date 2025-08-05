@@ -4,9 +4,11 @@
 - ✅ **Phase 1: Core Music Theory Foundation** - COMPLETE
 - ✅ **Phase 2: Fretboard Modeling** - COMPLETE  
 - ✅ **Phase 3: Fingering Generation** - COMPLETE
-- ⏳ **Phase 4: CLI & MCP Integration** - PENDING
+- ✅ **Phase 3.5: Visual Diagram Generation** - COMPLETE
+- ⏳ **Phase 4a: CLI Tool** - PENDING
+- ⏳ **Phase 4b: MCP Server Integration** - PENDING
 
-**Current Test Status**: 130/130 tests passing (100% success rate)
+**Current Test Status**: 152/152 tests passing (100% success rate)
 
 ## Project Overview
 
@@ -251,34 +253,97 @@ class Fingering:
 - **130/130 tests passing** including 7 dedicated standardness validation tests
 - **System generates what guitarists actually expect and use**
 
-### ⏳ Phase 4: CLI & MCP Integration - PENDING
-**Goal**: Create usable tools with both standalone and MCP interfaces
+### ✅ Phase 3.5: Visual Diagram Generation - COMPLETE
+**Goal**: Generate visual chord diagrams matching standard guitar chord book format
 
 #### Tasks:
-1. ⏳ **Standalone CLI Tool**
-   - Implement command-line interface with `click`
-   - Add comprehensive help and examples
-   - Include batch processing capabilities
+1. ✅ **Visual Diagram Engine**
+   - ✅ Implement chord diagram image generation using matplotlib/PIL
+   - ✅ Support standard elements: strings, frets, finger positions, muted/open strings
+   - ✅ Add chord name labels and fret position markers (2fr, 3fr, etc.)
 
-2. ⏳ **MCP Server Integration**
+2. ✅ **Fingering Integration**
+   - ✅ Convert Fingering objects to visual representations
+   - ✅ Handle both open position and higher fret diagrams
+   - ✅ Automatic positioning and scaling for different chord types
+
+3. ✅ **Output Formats**
+   - ✅ PNG/SVG image generation for web and print use
+   - ✅ Batch generation for multiple fingerings
+   - ✅ Integration with existing text-based chord shapes
+
+#### Deliverables:
+- ✅ `diagram_generator.py`: Visual diagram generation engine (543 lines)
+- ✅ Image export functionality (PNG, SVG, PDF formats)
+- ✅ Comprehensive test coverage (22 test cases)
+
+#### 📝 Implementation Notes:
+- **Professional Quality**: Generates diagrams matching standard guitar chord book appearance
+- **Multiple Formats**: Supports PNG, SVG, and PDF output with configurable DPI
+- **Flexible Layout**: Automatically handles open position and higher fret diagrams
+- **Batch Generation**: Can create grids of multiple chord diagrams
+- **Convenience Functions**: Easy-to-use functions for single chords and progressions
+- **Complete Integration**: Seamlessly works with existing Fingering objects
+- **Sample Output**: Generated 11 sample diagrams for visual verification
+
+#### 🎯 Visual Requirements (from example-diagrams.jpg): ✅ ACHIEVED
+- ✅ **Grid Structure**: 6 strings × 4-5 frets with clean lines
+- ✅ **Standard Notation**: "x" for muted, "o" for open, dots for fretted positions
+- ✅ **Finger Numbers**: 1-4 finger indicators below diagram
+- ✅ **Position Markers**: Fret position labels for non-open positions (e.g., "3fr")
+- ✅ **Professional Styling**: Matches standard guitar chord book appearance
+
+### ⏳ Phase 4a: CLI Tool - PENDING
+**Goal**: Create standalone command-line interface
+
+#### Tasks:
+1. ⏳ **Command-Line Interface**
+   - Implement CLI with `click` framework
+   - Add comprehensive help and examples
+   - Support both text and visual diagram output
+
+2. ⏳ **Batch Processing**
+   - Process multiple chords from files or arguments
+   - Generate chord progression diagrams
+   - Export options for different formats
+
+3. ⏳ **User Experience**
+   - Interactive chord exploration mode
+   - Fingering comparison and selection
+   - Progress indication for batch operations
+
+#### Deliverables:
+- ⏳ `cli.py`: Main command-line application
+- ⏳ Command documentation and help system
+- ⏳ Example usage and tutorials
+
+### ⏳ Phase 4b: MCP Server Integration - PENDING  
+**Goal**: Create MCP server for Claude integration
+
+#### Tasks:
+1. ⏳ **MCP Server Implementation**
    - Create MCP wrapper maintaining tool decoupling
    - Implement proper error handling for MCP context
    - Add tool descriptions and parameter validation
 
+2. ⏳ **Tool Integration**
+   - Expose chord generation and diagram creation as MCP tools
+   - Support both text and image responses
+   - Handle complex chord progression requests
+
 3. ⏳ **Testing and Validation**
-   - Create comprehensive test suite
-   - Test against real-world chord progressions
+   - Test MCP integration with Claude
    - Performance testing and optimization
+   - Real-world usage validation
 
 #### Deliverables:
-- ⏳ `cli.py`: Standalone command-line tool
 - ⏳ `mcp_server.py`: MCP integration layer
-- ⏳ Complete test suite and documentation
+- ⏳ MCP tool definitions and documentation
+- ⏳ Integration test suite
 
-#### 🎯 Ready to Start:
-- Phase 3 (Fingering Generation) is complete and fully tested
-- Core functionality ready for user-facing interfaces
-- All modules integrate seamlessly with comprehensive test coverage
+#### 🎯 Dependencies:
+- Requires Phase 3.5 (Visual Diagrams) for complete functionality
+- Requires Phase 4a (CLI) for command-line tool integration
 
 ## Key Requirements and Constraints
 
