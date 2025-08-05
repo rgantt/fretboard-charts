@@ -195,25 +195,30 @@ This project includes an MCP (Model Context Protocol) server for seamless integr
 
 ### Setup for Claude Desktop
 
-1. **Install MCP Dependencies**:
+1. **Install the Package**:
 ```bash
-pip install mcp
+# Clone the repository
+git clone https://github.com/username/fretboard-diagram-generator.git
+cd fretboard-diagram-generator
+
+# Install as a standalone package
+pip install -e .
 ```
 
 2. **Add to Claude Desktop Configuration**:
 ```json
 {
   "mcpServers": {
-    "guitar-chords": {
-      "command": "python",
-      "args": ["/path/to/fretboard-diagram-generator/mcp_server.py"],
-      "env": {}
+    "guitar-chord-generator": {
+      "command": "guitar-chord-mcp-server"
     }
   }
 }
 ```
 
 3. **Restart Claude Desktop** - The guitar chord tools will be available automatically
+
+**That's it!** No PYTHONPATH or complex configuration needed - the MCP server is now a standalone executable.
 
 ### Available MCP Tools
 
