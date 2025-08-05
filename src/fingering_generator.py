@@ -232,10 +232,22 @@ class FingeringGenerator:
                     chord_notes = chord.get_notes()
                     contains_required = fingering.contains_notes(chord_notes)
                     
-                    # For 7th chords, allow patterns that omit the 5th (common in guitar voicings)
-                    if not contains_required and chord.quality.name == 'DOMINANT_SEVENTH':
-                        # Check if it contains root, 3rd, and 7th (allow omitting 5th)
-                        essential_notes = [chord.root, chord.get_notes()[1], chord.get_notes()[3]]  # Root, 3rd, 7th
+                    # For extended chords, allow patterns that omit the 5th (common in guitar voicings)
+                    if not contains_required and chord.quality.name in ['DOMINANT_SEVENTH', 'SIXTH', 'NINTH']:
+                        chord_notes = chord.get_notes()
+                        if chord.quality.name == 'DOMINANT_SEVENTH':
+                            # Check if it contains root, 3rd, and 7th (allow omitting 5th)
+                            essential_notes = [chord.root, chord_notes[1], chord_notes[3]]  # Root, 3rd, 7th
+                        elif chord.quality.name == 'SIXTH':
+                            # Check if it contains root, 3rd, and 6th (allow omitting 5th)
+                            essential_notes = [chord.root, chord_notes[1], chord_notes[3]]  # Root, 3rd, 6th
+                        elif chord.quality.name == 'NINTH':
+                            # Check if it contains root, 3rd, 7th, and 9th (allow omitting 5th)
+                            if len(chord_notes) >= 5:
+                                essential_notes = [chord.root, chord_notes[1], chord_notes[3], chord_notes[4]]  # Root, 3rd, 7th, 9th
+                            else:
+                                essential_notes = chord_notes  # Fallback to all notes
+                        
                         contains_required = fingering.contains_notes(essential_notes)
                     
                     if contains_required:

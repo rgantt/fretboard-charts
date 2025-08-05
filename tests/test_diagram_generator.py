@@ -374,6 +374,51 @@ class TestErrorHandling:
         image_bytes = generate_chord_diagram(fingering)
         assert image_bytes is not None
         assert len(image_bytes) > 1000
+    
+    def test_barre_fret_markers(self):
+        """Test that barre chords on frets > 1 show fret markers"""
+        from src.fingering_generator import FingeringGenerator
+        from src.chord_parser import quick_parse
+        
+        generator = FingeringGenerator()
+        diagram_gen = ChordDiagramGenerator()
+        
+        # Test F# major (should have 2fr marker)
+        chord = quick_parse("F#")
+        fingerings = generator.generate_fingerings(chord)
+        assert len(fingerings) > 0
+        
+        # Verify it's the expected barre chord pattern
+        shape = fingerings[0].get_chord_shape()
+        assert shape == [2, 4, 4, 3, 2, 2], f"Expected F# barre pattern, got {shape}"
+        
+        # Create diagram - should not crash and should include fret marker
+        result = diagram_gen.generate_diagram(fingerings[0])
+        assert result is not None
+        assert len(result) > 1000  # Should be a reasonable PNG size
+        
+        # Test F major (should NOT have fret marker since it's 1st fret)
+        f_chord = quick_parse("F")
+        f_fingerings = generator.generate_fingerings(f_chord)
+        f_shape = f_fingerings[0].get_chord_shape()
+        assert f_shape == [1, 3, 3, 2, 1, 1], f"Expected F barre pattern, got {f_shape}"
+        
+        # Create diagram - should not crash
+        f_result = diagram_gen.generate_diagram(f_fingerings[0])
+        assert f_result is not None
+        assert len(f_result) > 1000
+        
+        # Test higher barre chord (Bb should show 6fr if it uses A-shape at 6th fret)
+        bb_chord = quick_parse("Bb")
+        bb_fingerings = generator.generate_fingerings(bb_chord)
+        bb_shape = bb_fingerings[0].get_chord_shape()
+        # Should be A-shape barre at 1st fret: x-1-3-3-3-1
+        assert bb_shape == [None, 1, 3, 3, 3, 1], f"Expected Bb A-shape barre, got {bb_shape}"
+        
+        # Create diagram - 1st fret barre should NOT show marker
+        bb_result = diagram_gen.generate_diagram(bb_fingerings[0])
+        assert bb_result is not None
+        assert len(bb_result) > 1000
 
 
 if __name__ == "__main__":

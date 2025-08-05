@@ -104,7 +104,7 @@ class ChordDiagramGenerator:
         self._draw_string_markers(ax, fingering, diagram_info)
         self._draw_finger_numbers(ax, fingering, diagram_info)
         self._draw_chord_name(ax, fingering, diagram_info)
-        self._draw_position_marker(ax, diagram_info)
+        self._draw_position_marker(ax, diagram_info, fingering)
         
         # Save or return image
         if output_path:
@@ -129,7 +129,7 @@ class ChordDiagramGenerator:
         if not fretted_positions:
             # All open strings
             start_fret = 0
-            display_frets = 4
+            display_frets = 5
         else:
             frets = [pos.fret for pos in fretted_positions]
             min_fret = min(frets)
@@ -138,11 +138,11 @@ class ChordDiagramGenerator:
             if min_fret <= 4:
                 # Open position
                 start_fret = 0
-                display_frets = max(4, max_fret)
+                display_frets = 5
             else:
                 # Higher position - center around the chord
                 start_fret = max(1, min_fret - 1)
-                display_frets = max(4, max_fret - start_fret + 1)
+                display_frets = 5
         
         # Calculate grid positioning
         grid_left = 0.15
@@ -212,21 +212,21 @@ class ChordDiagramGenerator:
                             break
             
             # Find the fret with multiple strings using same finger
-            # Require at least 3 strings for a true barre (eliminates Em false positive)
+            # Check for both E-shape barres (3+ strings) and A-shape barres (2 strings with big span)
             for fret, strings in finger_fret_strings.items():
-                if len(strings) >= 3:  # Stricter requirement - need 3+ strings
-                    # Check if this spans a significant portion of the neck
-                    strings.sort()
-                    string_span = strings[-1] - strings[0]  # Total span from lowest to highest string
-                    
-                    # Real barres typically:
-                    # 1. Use 3+ strings with the same finger at the same fret
-                    # 2. Span at least 4 strings worth (e.g., string 6 to 2, or 5 to 1)
-                    # 3. Allow gaps in the middle (like F major: strings 6,2,1 with gap at 3)
-                    if string_span >= 4:  # Must span at least 4 string positions
-                        barre_fret = fret
-                        barre_strings = strings
-                        break
+                strings.sort()
+                string_span = strings[-1] - strings[0]  # Total span from lowest to highest string
+                
+                # E-shape barre: 3+ strings with significant span (like F major: 6,2,1)
+                if len(strings) >= 3 and string_span >= 4:
+                    barre_fret = fret
+                    barre_strings = strings
+                    break
+                # A-shape barre: 2 strings but spanning the full neck (like Bb: strings 5,1)
+                elif len(strings) == 2 and string_span >= 4:
+                    barre_fret = fret
+                    barre_strings = strings
+                    break
         
         # Store barre info for drawing after dots
         barre_line_info = None
@@ -284,6 +284,19 @@ class ChordDiagramGenerator:
                    linewidth=barre_line_info['thickness'],
                    solid_capstyle='round',
                    zorder=10)  # High z-order to draw on top
+            
+            # Add barre fret marker for barres on frets higher than 1
+            if barre_fret and barre_fret > 1:
+                # Position the marker to the right of the barre line
+                marker_x = barre_line_info['right_x'] + 0.05
+                marker_y = barre_line_info['y']
+                marker_text = f"{barre_fret}fr"
+                
+                ax.text(marker_x, marker_y, marker_text,
+                       ha='left', va='center',
+                       fontsize=self.style.position_marker_size * 0.8,  # Slightly smaller than main position marker
+                       color=self.style.text_color,
+                       weight='normal')
     
     def _draw_string_markers(self, ax, fingering: Fingering, diagram_info: Dict):
         """Draw muted (x) string markers only - open strings have no marker"""
@@ -383,20 +396,36 @@ class ChordDiagramGenerator:
                color=self.style.text_color,
                weight='bold')
     
-    def _draw_position_marker(self, ax, diagram_info: Dict):
+    def _draw_position_marker(self, ax, diagram_info: Dict, fingering: Fingering):
         """Draw fret position marker for non-open positions"""
         start_fret = diagram_info['start_fret']
         
         if start_fret > 0:
-            # Add fret position marker (e.g., "3fr")
-            marker_text = f"{start_fret + 1}fr"
-            marker_x = diagram_info['grid_right'] + 0.08
-            marker_y = (diagram_info['grid_top'] + diagram_info['grid_bottom']) / 2
+            # Check if there's a barre that would show the same fret number
+            main_position_fret = start_fret + 1
+            barre_fret = None
+            if fingering.characteristics.get('is_barre_chord', False):
+                barre_fret = fingering._get_barre_fret()
             
-            ax.text(marker_x, marker_y, marker_text,
-                   ha='left', va='center',
-                   fontsize=self.style.position_marker_size,
-                   color=self.style.text_color)
+            # Only show main position marker if it won't duplicate the barre marker
+            if barre_fret is None or barre_fret != main_position_fret:
+                # Add fret position marker (e.g., "3fr")
+                marker_text = f"{main_position_fret}fr"
+                marker_x = diagram_info['grid_right'] + 0.08
+                
+                # Position marker next to the first fret line (which represents start_fret + 1)
+                fret_positions = diagram_info['fret_positions']
+                if len(fret_positions) > 1:
+                    # Position next to the second fret line (index 1), which represents start_fret + 1
+                    marker_y = fret_positions[1]
+                else:
+                    # Fallback to center if something goes wrong
+                    marker_y = (diagram_info['grid_top'] + diagram_info['grid_bottom']) / 2
+                
+                ax.text(marker_x, marker_y, marker_text,
+                       ha='left', va='center',
+                       fontsize=self.style.position_marker_size,
+                       color=self.style.text_color)
     
     def generate_multiple_diagrams(self, fingerings: List[Fingering],
                                  output_path: Optional[Union[str, Path]] = None,
@@ -453,7 +482,7 @@ class ChordDiagramGenerator:
             self._draw_string_markers(ax, fingering, diagram_info)
             self._draw_finger_numbers(ax, fingering, diagram_info)
             self._draw_chord_name(ax, fingering, diagram_info)
-            self._draw_position_marker(ax, diagram_info)
+            self._draw_position_marker(ax, diagram_info, fingering)
         
         # Hide unused subplots
         for i in range(len(fingerings), rows * cols):

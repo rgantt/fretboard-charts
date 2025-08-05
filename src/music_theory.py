@@ -114,6 +114,11 @@ class ChordQuality(Enum):
     MINOR_MAJOR_SEVENTH = "mM7"
     SUSPENDED_SECOND = "sus2"
     SUSPENDED_FOURTH = "sus4"
+    SIXTH = "6"
+    MINOR_SIXTH = "m6"
+    NINTH = "9"
+    MINOR_NINTH = "m9"
+    MAJOR_NINTH = "maj9"
 
 
 @dataclass
@@ -164,6 +169,11 @@ class Chord:
             ChordQuality.MINOR_MAJOR_SEVENTH: [0, 3, 7, 11],
             ChordQuality.SUSPENDED_SECOND: [0, 2, 7],
             ChordQuality.SUSPENDED_FOURTH: [0, 5, 7],
+            ChordQuality.SIXTH: [0, 4, 7, 9],
+            ChordQuality.MINOR_SIXTH: [0, 3, 7, 9],
+            ChordQuality.NINTH: [0, 4, 7, 10, 14],  # Dom9 = 1-3-5-b7-9
+            ChordQuality.MINOR_NINTH: [0, 3, 7, 10, 14],  # Min9 = 1-b3-5-b7-9
+            ChordQuality.MAJOR_NINTH: [0, 4, 7, 11, 14],  # Maj9 = 1-3-5-7-9
         }
         
         intervals = base_intervals[self.quality].copy()

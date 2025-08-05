@@ -109,6 +109,21 @@ class ChordParser:
         'sus2': ChordQuality.SUSPENDED_SECOND,
         'sus4': ChordQuality.SUSPENDED_FOURTH,
         'sus': ChordQuality.SUSPENDED_FOURTH,  # Default sus is sus4
+        
+        # Sixth chords
+        '6': ChordQuality.SIXTH,
+        'add6': ChordQuality.SIXTH,
+        'm6': ChordQuality.MINOR_SIXTH,
+        'min6': ChordQuality.MINOR_SIXTH,
+        
+        # Ninth chords  
+        '9': ChordQuality.NINTH,
+        'add9': ChordQuality.NINTH,
+        'm9': ChordQuality.MINOR_NINTH,
+        'min9': ChordQuality.MINOR_NINTH,
+        'M9': ChordQuality.MAJOR_NINTH,
+        'maj9': ChordQuality.MAJOR_NINTH,
+        '△9': ChordQuality.MAJOR_NINTH,
     }
     
     def __init__(self):

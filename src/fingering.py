@@ -139,18 +139,17 @@ class Fingering:
                         break
         
         # Check if any finger plays the same fret on multiple strings
-        # Require at least 3 strings for a true barre (eliminates Em false positive)
+        # Check for both E-shape barres (3+ strings) and A-shape barres (2 strings with big span)
         for (finger, fret), strings in finger_fret_strings.items():
-            if len(strings) >= 3:  # Need 3+ strings for barre
-                # For true barres, check if it's the index finger (most barres use index)
-                # and spans a significant portion of the neck
+            if finger == FingerAssignment.INDEX:  # Barres typically use index finger
                 strings.sort()
                 string_span = strings[-1] - strings[0]  # Total span from lowest to highest string
                 
-                # True barres are typically:
-                # 1. Index finger (most common for barres)
-                # 2. Span at least 4 strings worth (string 6 to 2, or 5 to 1, etc.)
-                if finger == FingerAssignment.INDEX and string_span >= 4:
+                # E-shape barre: 3+ strings with significant span (like F major: 6,2,1)
+                if len(strings) >= 3 and string_span >= 4:
+                    return True
+                # A-shape barre: 2 strings but spanning the full neck (like Bb: strings 5,1)
+                elif len(strings) == 2 and string_span >= 4:
                     return True
         
         return False
@@ -279,11 +278,51 @@ class Fingering:
         
         return True
     
+    def _get_barre_fret(self) -> Optional[int]:
+        """Get the fret number where the barre occurs, if any"""
+        if not self.finger_assignments or not self.characteristics.get('is_barre_chord', False):
+            return None
+        
+        # Find which fret has the barre (multiple strings, same finger, same fret)
+        finger_fret_strings = {}
+        for string_num, finger in self.finger_assignments.items():
+            if finger == FingerAssignment.INDEX:  # Barres are typically with index finger
+                for pos in self.positions:
+                    if pos.string == string_num and pos.fret > 0:
+                        if pos.fret not in finger_fret_strings:
+                            finger_fret_strings[pos.fret] = []
+                        finger_fret_strings[pos.fret].append(string_num)
+                        break
+        
+        # Find the fret with multiple strings using same finger
+        # Check for both E-shape barres (3+ strings) and A-shape barres (2 strings with big span)
+        for fret, strings in finger_fret_strings.items():
+            strings.sort()
+            string_span = strings[-1] - strings[0]  # Total span from lowest to highest string
+            
+            # E-shape barre: 3+ strings with significant span (like F major: 6,2,1)
+            if len(strings) >= 3 and string_span >= 4:
+                return fret
+            # A-shape barre: 2 strings but spanning the full neck (like Bb: strings 5,1)
+            elif len(strings) == 2 and string_span >= 4:
+                return fret
+        
+        return None
+    
     def __str__(self) -> str:
         shape = self.get_chord_shape()
         shape_str = '-'.join([str(f) if f is not None else 'x' for f in shape])
         chord_name = str(self.chord) if self.chord else "Unknown"
-        return f"{chord_name}: {shape_str} (difficulty: {self.difficulty:.2f})"
+        
+        # Add fret marker for barre chords on frets > 1
+        barre_marker = ""
+        if self.characteristics.get('is_barre_chord', False):
+            # Find the barre fret
+            barre_fret = self._get_barre_fret()
+            if barre_fret and barre_fret > 1:
+                barre_marker = f" [{barre_fret}fr barre]"
+        
+        return f"{chord_name}: {shape_str}{barre_marker} (difficulty: {self.difficulty:.2f})"
     
     def __repr__(self) -> str:
         return f"Fingering({len(self.positions)} notes, difficulty={self.difficulty:.2f})"
@@ -601,6 +640,13 @@ class FingeringValidator:
             # Small bonus for very low difficulty (ease of play)
             if fingering.difficulty < 0.1:
                 score += 0.05
+            
+            # Strong preference for lower fret positions (easier to play)
+            max_fret = fingering.characteristics.get('max_fret', 0)
+            if max_fret <= 5:
+                score += 0.1  # Bonus for low positions
+            elif max_fret >= 8:
+                score -= 0.1  # Penalty for high positions
             
             # Small penalty for high difficulty, but don't penalize standard patterns too much
             if fingering.difficulty > 0.5:
