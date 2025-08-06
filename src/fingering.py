@@ -505,12 +505,14 @@ class FingeringValidator:
         
         # Completeness bonus - prefer fingerings with more chord tones
         num_notes = len(fingering.positions)
-        if num_notes >= 5:
-            score += 0.2  # Full 5-6 note chords
+        if num_notes >= 6:
+            score += 0.5  # Very full 6-note chords (like full G shape)
+        elif num_notes >= 5:
+            score += 0.3  # Full 5-note chords  
         elif num_notes >= 4:
             score += 0.1  # Good 4 note chords
         elif num_notes <= 3:
-            score -= 0.1  # Penalize incomplete chords
+            score -= 0.2  # Strong penalty for incomplete chords
         
         # Open position bonus for common open chords
         if self._is_common_open_chord(fingering):
@@ -519,6 +521,36 @@ class FingeringValidator:
             else:
                 score -= 0.1  # Penalize if common open chord isn't in open position
         
+        # Treble pattern recognition bonus for slash chords
+        if fingering.chord and fingering.chord.bass:
+            # Check if treble strings (1-3) match common patterns for the main chord
+            treble_positions = [pos for pos in fingering.positions if pos.string <= 3]
+            if len(treble_positions) >= 2:
+                # Extract treble fret pattern
+                treble_frets = [None] * 3  # strings 3,2,1
+                for pos in treble_positions:
+                    treble_frets[3-pos.string] = pos.fret
+                
+                # Check against common open chord shapes
+                common_treble_patterns = {
+                    'G': [0, 3, 3],    # G chord treble strings  
+                    'C': [0, 1, 0],    # C chord treble strings
+                    'A': [2, 2, 0],    # A chord treble strings
+                    'Am': [2, 1, 0],   # Am chord treble strings
+                    'D': [2, 1, 2],    # D chord treble strings
+                }
+                
+                chord_root = fingering.chord.root.name
+                if chord_root in common_treble_patterns:
+                    expected_pattern = common_treble_patterns[chord_root]
+                    # Check if treble matches (allowing for None/muted strings)
+                    matches = 0
+                    for i in range(3):
+                        if treble_frets[i] is not None and expected_pattern[i] == treble_frets[i]:
+                            matches += 1
+                    if matches >= 2:  # At least 2/3 strings match
+                        score += 0.3  # Significant bonus for familiar treble pattern
+                        
         # Bass note correctness bonus
         bass_note = fingering.get_bass_note()
         if bass_note and fingering.chord:
@@ -653,6 +685,8 @@ class FingeringValidator:
                 score -= fingering.difficulty * 0.1
             else:
                 score -= fingering.difficulty * 0.05
+            
+            # This section removed - slash chords now strictly require correct bass
             
             return score
         

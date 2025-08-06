@@ -132,7 +132,8 @@ class FingeringGenerator:
         
         for fingering in candidates:
             validation = self.validator.validate_fingering(fingering)
-            if validation['is_playable'] and validation['score'] > 0.3:
+            # Use both the validator's assessment AND the fingering's own method
+            if validation['is_playable'] and validation['score'] > 0.3 and fingering.is_playable():
                 valid_fingerings.append(fingering)
         
         # Step 5: Rank and return top results
@@ -200,6 +201,17 @@ class FingeringGenerator:
                     name=f"interval_{interval}"
                 ))
         
+        # Handle slash chord bass note - make it highest priority
+        if chord.bass:
+            bass_interval = (chord.bass.pitch_class - chord.root.pitch_class) % 12
+            bass_req = ChordToneRequirement(
+                note=chord.bass,
+                priority=0,  # Highest priority - even higher than root
+                interval=bass_interval,
+                name="bass"
+            )
+            requirements.append(bass_req)
+        
         # Sort by priority (required first, then preferred, then optional)
         requirements.sort(key=lambda req: req.priority)
         
@@ -250,7 +262,25 @@ class FingeringGenerator:
                         
                         contains_required = fingering.contains_notes(essential_notes)
                     
-                    if contains_required:
+                    # For slash chords, validate that bass note is on bass strings
+                    bass_valid = True
+                    if chord.bass:
+                        bass_note = fingering.get_bass_note()
+                        if not bass_note or bass_note.pitch_class != chord.bass.pitch_class:
+                            bass_valid = False
+                        else:
+                            # Check that bass note is on strings 4, 5, or 6
+                            bass_positions = [pos for pos in fingering.positions if pos.string >= 4]
+                            if not bass_positions:
+                                bass_valid = False
+                            else:
+                                lowest_string = max(pos.string for pos in fingering.positions)
+                                bass_string_positions = [pos for pos in bass_positions if pos.string == lowest_string]
+                                if not any(self.fretboard.get_note_at_position(pos).pitch_class == chord.bass.pitch_class 
+                                          for pos in bass_string_positions):
+                                    bass_valid = False
+                    
+                    if contains_required and bass_valid:
                         pattern_fingerings.append(fingering)
                         
                         # Limit pattern results
@@ -290,9 +320,36 @@ class FingeringGenerator:
         # Generate combinations of positions
         fingerings = []
         
-        # Get required notes (priority 1)
+        # Get requirements by priority, with special handling for bass notes (priority 0)
+        bass_reqs = [req for req in requirements if req.priority == 0 and req in note_positions]
         required_reqs = [req for req in requirements if req.priority == 1 and req in note_positions]
         preferred_reqs = [req for req in requirements if req.priority == 2 and req in note_positions]
+        
+        # For slash chords, we need to prioritize bass note on bass strings (4, 5, 6)
+        if bass_reqs:
+            bass_req = bass_reqs[0]  # Should only be one bass requirement
+            # Get bass note positions and filter to only bass strings (4, 5, 6)
+            all_bass_positions = note_positions[bass_req]
+            bass_positions = [pos for pos in all_bass_positions if pos.string >= 4]
+            # Sort by string (descending - string 6 is lowest)
+            bass_positions.sort(key=lambda pos: pos.string, reverse=True)
+            
+            # If no valid bass positions, return empty (slash chord requires bass note on bass strings)
+            if not bass_positions:
+                return []
+            
+            # Try bass positions, prioritizing lower strings
+            for bass_pos in bass_positions:
+                # Generate fingerings with this bass position
+                remaining_reqs = required_reqs + preferred_reqs
+                bass_fingerings = self._generate_with_bass_note(bass_pos, bass_req, remaining_reqs, note_positions, config, chord)
+                fingerings.extend(bass_fingerings)
+                
+                # Limit fingerings from each bass position
+                if len(fingerings) >= 10:
+                    break
+            
+            return fingerings[:config.max_results]
         
         if len(required_reqs) < config.min_required_tones:
             return []  # Not enough required notes available in this region
@@ -320,6 +377,90 @@ class FingeringGenerator:
                         chord=chord
                     )
                     fingerings.append(fingering)
+        
+        return fingerings
+    
+    def _generate_with_bass_note(self, bass_pos: FretPosition, bass_req: ChordToneRequirement,
+                               remaining_reqs: List[ChordToneRequirement],
+                               note_positions: Dict[ChordToneRequirement, List[FretPosition]],
+                               config: GenerationConfig, chord: Chord) -> List[Fingering]:
+        """
+        Generate fingerings that include a specific bass note position.
+        
+        Args:
+            bass_pos: The bass position to include
+            bass_req: The bass requirement
+            remaining_reqs: Other chord tone requirements
+            note_positions: Available positions for each requirement
+            config: Generation configuration
+            chord: The chord being generated
+            
+        Returns:
+            List of fingerings with the given bass note
+        """
+        fingerings = []
+        
+        # Filter remaining requirements to avoid duplicating the bass note
+        filtered_reqs = []
+        for req in remaining_reqs:
+            if req.note.pitch_class != bass_req.note.pitch_class:
+                filtered_reqs.append(req)
+            elif req in note_positions:
+                # Same note as bass - only include positions on different strings
+                different_string_positions = [pos for pos in note_positions[req] if pos.string != bass_pos.string]
+                if different_string_positions:
+                    # Create a new requirement with filtered positions
+                    filtered_positions = {req: different_string_positions}
+                    note_positions.update(filtered_positions)
+                    filtered_reqs.append(req)
+        
+        # Generate combinations with the bass note fixed
+        for req_combo in self._generate_position_combinations(filtered_reqs, note_positions, config):
+            all_positions = [bass_pos] + list(req_combo)
+            
+            # Validate the complete combination
+            if self._validate_position_combination(all_positions, config):
+                # Check that bass note is on a bass string (4, 5, or 6) AND the lowest string played
+                played_strings = [pos.string for pos in all_positions]
+                lowest_string = max(played_strings)  # Higher number = lower string
+                
+                if bass_pos.string >= 4 and bass_pos.string == lowest_string:
+                    # For slash chords, try to add more chord tones if possible for fuller sound
+                    final_positions = list(all_positions)
+                    
+                    # Try to add additional instances of chord tones on higher strings for fuller sound
+                    chord_notes = chord.get_notes()
+                    used_strings = {pos.string for pos in final_positions}
+                    
+                    # Prioritize higher strings (1, 2, 3) for melody notes, avoid low strings
+                    for string in range(1, 4):  # Only strings 1-3 (treble strings)
+                        if string not in used_strings:
+                            for note in chord_notes:
+                                # Prefer root note for melody completion
+                                if note.pitch_class == chord.root.pitch_class:
+                                    # Find positions for root note on this string in the open region
+                                    for fret in range(0, 5):  # Open region, frets 0-4
+                                        if self.fretboard.validate_position(string, fret):
+                                            fret_note = self.fretboard.get_note_at_position(string, fret)
+                                            if fret_note.pitch_class == note.pitch_class:
+                                                test_pos = FretPosition(string, fret, fret_note)
+                                                test_positions = final_positions + [test_pos]
+                                                
+                                                # Check if adding this position improves the fingering
+                                                if (self._validate_position_combination(test_positions, config) and
+                                                    self._calculate_fret_span(test_positions) <= config.max_fret_span):
+                                                    final_positions.append(test_pos)
+                                                    break  # Take first valid addition per string
+                    
+                    fingering = Fingering(
+                        positions=final_positions,
+                        chord=chord
+                    )
+                    fingerings.append(fingering)
+                    
+                    # Limit to prevent too many combinations
+                    if len(fingerings) >= 5:
+                        break
         
         return fingerings
     
