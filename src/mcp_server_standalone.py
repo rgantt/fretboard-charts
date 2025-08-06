@@ -122,17 +122,17 @@ async def handle_list_tools() -> List[Tool]:
         ),
         Tool(
             name="create_chord_diagram",
-            description="Generate a visual chord diagram image",
+            description="Generate a visual chord diagram image. Provide either chord_symbol OR fingering_spec",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "chord_symbol": {
                         "type": "string",
-                        "description": "Chord symbol to generate diagram for"
+                        "description": "Chord symbol to generate diagram for (e.g., 'Cmaj7', 'F#m7b5')"
                     },
                     "fingering_spec": {
                         "type": "object",
-                        "description": "Alternative: specify exact fingering positions",
+                        "description": "Alternative to chord_symbol: specify exact fingering positions",
                         "properties": {
                             "positions": {
                                 "type": "array",
@@ -145,7 +145,8 @@ async def handle_list_tools() -> List[Tool]:
                                     "required": ["string", "fret"]
                                 }
                             }
-                        }
+                        },
+                        "required": ["positions"]
                     },
                     "format": {
                         "type": "string",
@@ -159,10 +160,7 @@ async def handle_list_tools() -> List[Tool]:
                         "description": "Include chord name in diagram"
                     }
                 },
-                "oneOf": [
-                    {"required": ["chord_symbol"]},
-                    {"required": ["fingering_spec"]}
-                ]
+                "required": []
             }
         ),
         Tool(
@@ -302,6 +300,13 @@ async def handle_create_diagram(arguments: Dict[str, Any]) -> List[types.TextCon
     format_type = arguments.get("format", "png")
     include_name = arguments.get("include_name", True)
     
+    # Validate that exactly one of chord_symbol or fingering_spec is provided
+    if not chord_symbol and not fingering_spec:
+        return [TextContent(type="text", text="Error: Either chord_symbol or fingering_spec must be provided")]
+    
+    if chord_symbol and fingering_spec:
+        return [TextContent(type="text", text="Error: Provide either chord_symbol OR fingering_spec, not both")]
+    
     try:
         fingering = None
         
@@ -322,9 +327,6 @@ async def handle_create_diagram(arguments: Dict[str, Any]) -> List[types.TextCon
                 positions.append(FretPosition(string=pos["string"], fret=pos["fret"], note=note))
             
             fingering = Fingering(positions=positions)
-            
-        else:
-            return [TextContent(type="text", text="Either chord_symbol or fingering_spec must be provided")]
         
         # Generate diagram
         image_bytes = generate_chord_diagram(fingering, format=format_type)

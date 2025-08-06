@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "guitar-chord-generator": {
+      "type": "stdio",
+      "command": "/Users/ryangantt/Documents/workspaces/fretboard-diagram-generator/venv/bin/guitar-chord-mcp-server",
+      "args": [],
+      "env": {}
+    }
+  }
+}
