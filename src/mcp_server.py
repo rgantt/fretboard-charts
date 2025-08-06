@@ -27,7 +27,7 @@ import mcp.types as types
 
 # Import our core functionality
 from .fingering_generator import generate_chord_fingerings
-from .diagram_generator import generate_chord_diagram
+from .diagram_generator import generate_chord_diagram, ChordDiagramGenerator
 from .music_theory import Chord
 from .chord_parser import parse_chord
 from .fingering import Fingering
@@ -198,6 +198,78 @@ async def handle_list_tools() -> List[Tool]:
                 },
                 "required": ["chord_symbol"]
             }
+        ),
+        Tool(
+            name="generate_chord_diagram_batch",
+            description="Generate a single image containing multiple chord diagrams in a grid layout",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "chord_list": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "List of chord symbols to generate diagrams for",
+                        "minItems": 1,
+                        "maxItems": 20
+                    },
+                    "fingering_specs": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "positions": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "string": {"type": "integer", "minimum": 1, "maximum": 6},
+                                            "fret": {"type": "integer", "minimum": 0, "maximum": 24}
+                                        },
+                                        "required": ["string", "fret"]
+                                    }
+                                },
+                                "chord_name": {
+                                    "type": "string",
+                                    "description": "Name to display for this chord diagram"
+                                }
+                            },
+                            "required": ["positions"]
+                        },
+                        "description": "Alternative: List of specific fingering specifications instead of chord symbols",
+                        "minItems": 1,
+                        "maxItems": 20
+                    },
+                    "columns": {
+                        "type": "integer",
+                        "description": "Number of columns in the grid layout",
+                        "default": 4,
+                        "minimum": 1,
+                        "maximum": 8
+                    },
+                    "format": {
+                        "type": "string",
+                        "description": "Output image format",
+                        "enum": ["png"],
+                        "default": "png"
+                    },
+                    "dpi": {
+                        "type": "integer",
+                        "description": "Image resolution in DPI",
+                        "default": 150,
+                        "minimum": 72,
+                        "maximum": 600
+                    },
+                    "include_names": {
+                        "type": "boolean",
+                        "description": "Include chord names in diagrams",
+                        "default": true
+                    }
+                },
+                "oneOf": [
+                    {"required": ["chord_list"]},
+                    {"required": ["fingering_specs"]}
+                ]
+            }
         )
     ]
 
@@ -214,6 +286,8 @@ async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[types.T
             return await handle_analyze_progression(arguments)
         elif name == "get_chord_info":
             return await handle_get_chord_info(arguments)
+        elif name == "generate_chord_diagram_batch":
+            return await handle_generate_batch_diagram(arguments)
         else:
             return [TextContent(type="text", text=f"Unknown tool: {name}")]
     except Exception as e:
@@ -530,6 +604,112 @@ async def handle_get_chord_info(arguments: Dict[str, Any]) -> List[types.TextCon
     except Exception as e:
         logger.error(f"Error getting chord info for {chord_symbol}: {e}")
         return [TextContent(type="text", text=f"Error getting chord info: {str(e)}")]
+
+
+async def handle_generate_batch_diagram(arguments: Dict[str, Any]) -> List[types.TextContent | types.ImageContent]:
+    """Handle generate_chord_diagram_batch tool"""
+    chord_list = arguments.get("chord_list")
+    fingering_specs = arguments.get("fingering_specs")
+    columns = arguments.get("columns", 4)
+    format_type = arguments.get("format", "png")
+    dpi = arguments.get("dpi", 150)
+    include_names = arguments.get("include_names", True)
+    
+    # Validate that exactly one of chord_list or fingering_specs is provided
+    if chord_list is None and fingering_specs is None:
+        return [TextContent(type="text", text="Error: Either chord_list or fingering_specs must be provided")]
+    
+    if chord_list is not None and fingering_specs is not None:
+        return [TextContent(type="text", text="Error: Provide either chord_list OR fingering_specs, not both")]
+    
+    try:
+        fingerings = []
+        failed_items = []
+        
+        if chord_list:
+            # Generate fingerings from chord symbols
+            for chord_symbol in chord_list:
+                try:
+                    chord_fingerings = generate_chord_fingerings(chord_symbol, max_results=1)
+                    if chord_fingerings:
+                        fingering = chord_fingerings[0]
+                        # Set chord name for diagram display if include_names is True
+                        if include_names:
+                            fingering.chord_name = chord_symbol
+                        fingerings.append(fingering)
+                    else:
+                        failed_items.append(f"{chord_symbol}: No fingerings found")
+                except Exception as e:
+                    failed_items.append(f"{chord_symbol}: {str(e)}")
+        
+        elif fingering_specs:
+            # Create fingerings from specifications
+            from .fretboard import FretPosition, Fretboard
+            from .music_theory import Note
+            
+            fretboard = Fretboard()
+            
+            for i, spec in enumerate(fingering_specs):
+                try:
+                    positions = []
+                    for pos in spec["positions"]:
+                        # Get the note at this position
+                        note = fretboard.get_note_at_position(pos["string"], pos["fret"])
+                        positions.append(FretPosition(string=pos["string"], fret=pos["fret"], note=note))
+                    
+                    fingering = Fingering(positions=positions)
+                    
+                    # Set chord name if provided and include_names is True
+                    if include_names and "chord_name" in spec:
+                        fingering.chord_name = spec["chord_name"]
+                    elif include_names:
+                        fingering.chord_name = f"Chord {i+1}"
+                    
+                    fingerings.append(fingering)
+                    
+                except Exception as e:
+                    failed_items.append(f"Fingering {i+1}: {str(e)}")
+        
+        if not fingerings:
+            error_msg = "No valid fingerings to process"
+            if failed_items:
+                error_msg += f". Failures: {'; '.join(failed_items)}"
+            return [TextContent(type="text", text=error_msg)]
+        
+        # Generate batch diagram
+        diagram_generator = ChordDiagramGenerator()
+        image_bytes = diagram_generator.generate_multiple_diagrams(
+            fingerings=fingerings,
+            cols=columns,
+            format=format_type,
+            dpi=dpi
+        )
+        
+        if not image_bytes:
+            return [TextContent(type="text", text="Failed to generate batch diagram")]
+        
+        # Encode as base64
+        base64_data = base64.b64encode(image_bytes).decode('utf-8')
+        
+        # Prepare response
+        success_msg = f"Generated batch diagram with {len(fingerings)} chord(s)"
+        if failed_items:
+            success_msg += f". Failed items: {'; '.join(failed_items)}"
+        
+        response = [
+            TextContent(type="text", text=success_msg),
+            ImageContent(
+                type="image",
+                data=base64_data,
+                mimeType=f"image/{format_type}"
+            )
+        ]
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Error generating batch diagram: {e}")
+        return [TextContent(type="text", text=f"Error generating batch diagram: {str(e)}")]
 
 
 async def main():

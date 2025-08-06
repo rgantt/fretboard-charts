@@ -18,6 +18,7 @@ from src.mcp_server import (
     handle_create_diagram,
     handle_analyze_progression,
     handle_get_chord_info,
+    handle_generate_batch_diagram,
     format_fingering_for_output
 )
 
@@ -38,7 +39,8 @@ class TestMCPToolDefinitions:
             "generate_chord_fingerings",
             "create_chord_diagram", 
             "analyze_chord_progression",
-            "get_chord_info"
+            "get_chord_info",
+            "generate_chord_diagram_batch"
         }
         
         tool_names = {tool.name for tool in tools}
@@ -362,6 +364,171 @@ class TestUtilityFunctions:
         
         # Should handle error gracefully
         assert "error" in formatted or "fingering_pattern" in formatted
+
+
+class TestBatchDiagramGeneration:
+    """Test batch chord diagram generation functionality"""
+    
+    @pytest.mark.asyncio
+    async def test_batch_with_chord_list(self):
+        """Test batch generation using chord symbols"""
+        args = {
+            "chord_list": ["C", "Am", "F", "G"],
+            "columns": 2,
+            "format": "png",
+            "dpi": 150,
+            "include_names": True
+        }
+        
+        result = await handle_generate_batch_diagram(args)
+        
+        # Should return text description and image
+        assert len(result) == 2
+        
+        # First should be text content with success message
+        text_content = result[0]
+        assert hasattr(text_content, 'text')
+        assert "Generated batch diagram with 4 chord(s)" in text_content.text
+        
+        # Second should be image content
+        image_content = result[1]
+        assert hasattr(image_content, 'data')
+        assert hasattr(image_content, 'mimeType')
+        assert image_content.mimeType == "image/png"
+        
+        # Should be valid base64 data
+        try:
+            base64.b64decode(image_content.data)
+        except:
+            pytest.fail("Image data should be valid base64")
+    
+    @pytest.mark.asyncio
+    async def test_batch_with_fingering_specs(self):
+        """Test batch generation using fingering specifications"""
+        args = {
+            "fingering_specs": [
+                {
+                    "positions": [
+                        {"string": 1, "fret": 0},
+                        {"string": 2, "fret": 1},
+                        {"string": 3, "fret": 0},
+                        {"string": 4, "fret": 2},
+                        {"string": 5, "fret": 3}
+                    ],
+                    "chord_name": "C Major"
+                },
+                {
+                    "positions": [
+                        {"string": 1, "fret": 0},
+                        {"string": 2, "fret": 0},
+                        {"string": 3, "fret": 0},
+                        {"string": 4, "fret": 2},
+                        {"string": 5, "fret": 2}
+                    ],
+                    "chord_name": "A Minor"
+                }
+            ],
+            "columns": 2,
+            "include_names": True
+        }
+        
+        result = await handle_generate_batch_diagram(args)
+        
+        # Should return success
+        assert len(result) == 2
+        assert "Generated batch diagram with 2 chord(s)" in result[0].text
+        assert hasattr(result[1], 'data')
+    
+    @pytest.mark.asyncio  
+    async def test_batch_with_mixed_success_failure(self):
+        """Test batch generation with some invalid chords"""
+        args = {
+            "chord_list": ["C", "InvalidChord123", "Am", "AnotherBadChord"],
+            "columns": 2
+        }
+        
+        result = await handle_generate_batch_diagram(args)
+        
+        # Should return partial success
+        assert len(result) == 2
+        
+        # Text should mention failures
+        text_content = result[0].text
+        assert "Generated batch diagram with 2 chord(s)" in text_content
+        assert "Failed items:" in text_content
+        assert "InvalidChord123" in text_content
+        assert "AnotherBadChord" in text_content
+        
+        # Should still generate image for valid chords
+        assert hasattr(result[1], 'data')
+    
+    @pytest.mark.asyncio
+    async def test_batch_parameter_validation(self):
+        """Test parameter validation for batch tool"""
+        # Test missing both required parameters
+        args = {}
+        result = await handle_generate_batch_diagram(args)
+        
+        assert len(result) == 1
+        assert "Either chord_list or fingering_specs must be provided" in result[0].text
+        
+        # Test providing both parameters (should error)
+        args = {
+            "chord_list": ["C"],
+            "fingering_specs": [{"positions": [{"string": 1, "fret": 0}]}]
+        }
+        result = await handle_generate_batch_diagram(args)
+        
+        assert len(result) == 1
+        assert "Provide either chord_list OR fingering_specs, not both" in result[0].text
+    
+    @pytest.mark.asyncio
+    async def test_batch_with_custom_parameters(self):
+        """Test batch generation with custom layout parameters"""
+        args = {
+            "chord_list": ["C", "D", "E", "F", "G", "A"],
+            "columns": 3,
+            "dpi": 200,
+            "include_names": False
+        }
+        
+        result = await handle_generate_batch_diagram(args)
+        
+        # Should handle custom parameters
+        assert len(result) == 2
+        assert "Generated batch diagram with 6 chord(s)" in result[0].text
+        
+        # Verify image was generated
+        assert hasattr(result[1], 'data')
+        assert result[1].mimeType == "image/png"
+    
+    @pytest.mark.asyncio
+    async def test_batch_empty_chord_list(self):
+        """Test handling of empty chord list"""
+        args = {
+            "chord_list": []
+        }
+        
+        result = await handle_generate_batch_diagram(args)
+        
+        # Should return error about no valid fingerings
+        assert len(result) == 1
+        assert "No valid fingerings to process" in result[0].text
+    
+    @pytest.mark.asyncio
+    async def test_batch_all_failed_chords(self):
+        """Test handling when all chords fail to generate"""
+        args = {
+            "chord_list": ["BadChord1", "BadChord2", "BadChord3"]
+        }
+        
+        result = await handle_generate_batch_diagram(args)
+        
+        # Should return error with failure details
+        assert len(result) == 1
+        assert "No valid fingerings to process" in result[0].text
+        assert "Failures:" in result[0].text
+        assert "BadChord1" in result[0].text
 
 
 class TestMCPIntegration:
