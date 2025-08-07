@@ -190,29 +190,87 @@ Interactive Commands:
 
 The project includes an MCP server for seamless integration with AI assistants like Claude.
 
-### Setup for Claude Desktop
+### Installation
 
-1. **Install the Package** (if not already done):
-```bash
-pip install -e .
-```
+1. **Ensure the guitar-chord-generator package is installed in the project's virtual environment**:
+   ```bash
+   cd /path/to/fretboard-diagram-generator
+   python -m venv venv  # Create venv if it doesn't exist
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -e .
+   ```
 
-2. **Configure Claude Desktop**:
+### Configuration
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+#### Option 1: Virtual Environment Path (Recommended)
+
+Use the full path to the MCP server in the project's virtual environment:
+
 ```json
 {
   "mcpServers": {
     "guitar-chord-generator": {
-      "command": "guitar-chord-mcp-server"
+      "command": "/path/to/fretboard-diagram-generator/venv/bin/guitar-chord-mcp-server",
+      "args": [],
+      "env": {},
+      "disabled": false
     }
   }
 }
 ```
 
-3. **Restart Claude Desktop**
+On Windows, use:
+```json
+"command": "C:\\path\\to\\fretboard-diagram-generator\\venv\\Scripts\\guitar-chord-mcp-server.exe"
+```
 
-The guitar chord tools will be available automatically!
+#### Option 2: Python Module Configuration
+
+Run the server using the virtual environment's Python interpreter:
+
+```json
+{
+  "mcpServers": {
+    "guitar-chord-generator": {
+      "command": "/path/to/fretboard-diagram-generator/venv/bin/python",
+      "args": ["-m", "mcp_server"],
+      "cwd": "/path/to/fretboard-diagram-generator",
+      "env": {
+        "PYTHONPATH": "/path/to/fretboard-diagram-generator"
+      },
+      "disabled": false
+    }
+  }
+}
+```
+
+#### Option 3: Global Installation
+
+Only if you've installed the package globally (not recommended):
+
+```json
+{
+  "mcpServers": {
+    "guitar-chord-generator": {
+      "command": "guitar-chord-mcp-server",
+      "args": [],
+      "env": {},
+      "disabled": false
+    }
+  }
+}
+```
+
+### Using with Claude Desktop
+
+1. **Copy the desired configuration to your Claude Desktop config directory**:
+   - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+   - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+   - Linux: `~/.config/Claude/claude_desktop_config.json`
+
+2. **If you already have a config file, merge the `mcpServers` section into it**.
+
+3. **Restart Claude Desktop for the changes to take effect**.
 
 ### Available MCP Tools
 
@@ -248,6 +306,15 @@ Get detailed music theory information about a chord.
 - `include_theory` (boolean): Include interval analysis (default: true)
 - `include_alternatives` (boolean): Include alternative voicings (default: true)
 
+#### `create_batch_chord_diagram`
+Create diagrams for multiple chords at once.
+
+**Parameters:**
+- `chord_list` (array): List of chord symbols OR `fingering_specs` array
+- `format` (string): Output format "png" or "svg" (default: "png")
+- `dpi` (integer): Image resolution 72-600 (default: 150)
+- `include_names` (boolean): Include chord names in diagrams (default: true)
+
 ### Example Usage with Claude
 
 ```
@@ -263,6 +330,17 @@ Here's the F# major chord diagram. This is an E-shape barre chord at the 2nd fre
 - Barre the 2nd fret with your index finger
 - This pattern can be moved to any fret to create different major chords
 ```
+
+### MCP Troubleshooting
+
+- **Make sure the package is installed in the project's virtual environment**
+- **Verify the path to the venv is correct in your configuration**
+- **For debugging, run the server directly in a terminal**:
+  ```bash
+  /path/to/fretboard-diagram-generator/venv/bin/guitar-chord-mcp-server
+  ```
+- **The server logs to stderr, so check Claude's logs for any issues**
+- **On Windows, remember to use backslashes in paths and add `.exe` to executables**
 
 ## 📚 Python API
 
