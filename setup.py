@@ -28,7 +28,8 @@ setup(
     url="https://github.com/username/fretboard-diagram-generator",
     
     # Package configuration
-    packages=find_packages(),
+    packages=find_packages() + ['.'],
+    py_modules=['cli', 'mcp_server'],
     package_data={
         'src': ['*.py'],
     },
@@ -48,7 +49,7 @@ setup(
     entry_points={
         'console_scripts': [
             'guitar-chord-cli=cli:cli',
-            'guitar-chord-mcp-server=mcp:main',
+            'guitar-chord-mcp-server=mcp_server:run_server',
         ],
     },
     

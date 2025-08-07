@@ -26,11 +26,11 @@ from mcp.types import (
 import mcp.types as types
 
 # Import our core functionality
-from .fingering_generator import generate_chord_fingerings
-from .diagram_generator import generate_chord_diagram, ChordDiagramGenerator
-from .music_theory import Chord
-from .chord_parser import parse_chord
-from .fingering import Fingering
+from src.fingering_generator import generate_chord_fingerings
+from src.diagram_generator import generate_chord_diagram, ChordDiagramGenerator
+from src.music_theory import Chord
+from src.chord_parser import parse_chord
+from src.fingering import Fingering
 
 
 # Configure logging
@@ -262,7 +262,7 @@ async def handle_list_tools() -> List[Tool]:
                     "include_names": {
                         "type": "boolean",
                         "description": "Include chord names in diagrams",
-                        "default": true
+                        "default": True
                     }
                 },
                 "oneOf": [
@@ -734,5 +734,10 @@ async def main():
         )
 
 
-if __name__ == "__main__":
+def run_server():
+    """Synchronous entry point for MCP server"""
     asyncio.run(main())
+
+
+if __name__ == "__main__":
+    run_server()
