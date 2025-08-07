@@ -48,8 +48,7 @@ setup(
     entry_points={
         'console_scripts': [
             'guitar-chord-cli=cli:cli',
-            'guitar-chord-mcp-server=src.mcp_server_standalone:main',
-            'guitar-chord-json=src.cli_json:main',
+            'guitar-chord-mcp-server=mcp:main',
         ],
     },
     
