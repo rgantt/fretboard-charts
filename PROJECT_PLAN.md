@@ -7,11 +7,12 @@
 - ✅ **Phase 3.5: Visual Diagram Generation** - COMPLETE
 - ✅ **Phase 4a: CLI Tool** - COMPLETE
 - ✅ **Phase 4b: MCP Server Integration** - COMPLETE
-- ✅ **Phase 4c: Batch Image Generation MCP Tool** - COMPLETE
+- ✅ **Phase 4c: MCP Tool Consolidation** - COMPLETE
 
-**Current Test Status**: 165/165 tests passing (100% success rate) + 19/19 MCP tests passing
+**Current Test Status**: 165/165 tests passing (100% success rate) + simplified MCP interface (4 tools)
 
 ## 🎉 Recent Achievements (Latest Updates)
+- ✅ **MCP Tool Consolidation**: Simplified from 5 to 4 tools by merging single/batch diagram generation
 - ✅ **MCP Server Integration**: Complete AI assistant integration with 4 powerful tools
 - ✅ **Standard Chord Chart Compliance**: All sharp/flat chords now generate professional-quality fingerings matching reference charts
 - ✅ **Visual Diagram Enhancements**: Added barre fret markers ("2fr", "5fr") for professional chord book formatting
@@ -462,38 +463,38 @@ class Fingering:
 - **Performance**: Fast response times suitable for interactive AI assistant use
 - **Documentation**: Complete setup guide and usage examples in README.md
 
-### ✅ Phase 4c: Batch Image Generation MCP Tool - COMPLETE
-**Goal**: Add MCP tool for batch chord diagram generation to complement existing CLI batch functionality
+### ✅ Phase 4c: MCP Tool Consolidation - COMPLETE
+**Goal**: Simplify MCP interface by consolidating redundant tools
 
 #### Completed Tasks:
-1. ✅ **Batch Image Generation Tool**
-   - ✅ Added `generate_chord_diagram_batch` MCP tool to mcp_server.py
-   - ✅ Accepts multiple fingering specifications in single request (up to 20 chords)
-   - ✅ Generates combined image with multiple chord diagrams in grid layout
-   - ✅ Returns base64-encoded PNG data for agent consumption
+1. ✅ **Tool Consolidation**
+   - ✅ Removed redundant single `create_chord_diagram` tool
+   - ✅ Renamed `generate_chord_diagram_batch` to `create_chord_diagram`
+   - ✅ Single tool now handles both single and multiple chord diagrams (1-20 chords)
+   - ✅ Simplified MCP interface from 5 tools to 4 tools
 
-2. ✅ **Implementation Strategy**
-   - ✅ Leveraged existing CLI batch image generation functionality via ChordDiagramGenerator
-   - ✅ Integrated seamlessly with current diagram generation engine
-   - ✅ Maintained consistent output format with other MCP tools (text + image response)
-   - ✅ Added comprehensive parameter validation and error handling
+2. ✅ **Implementation Updates**
+   - ✅ Updated tool handler to support both single and batch operations
+   - ✅ Maintained all existing functionality with cleaner interface
+   - ✅ Updated tool descriptions to reflect consolidated capabilities
+   - ✅ Fixed tests to work with renamed tool
 
 3. ✅ **Tool Specification**
-   - ✅ **Input**: List of chord symbols OR fingering specifications, layout options (columns 1-8), format (PNG), DPI settings (72-600), name inclusion toggle
-   - ✅ **Output**: Base64-encoded PNG data containing multiple chord diagrams with success/failure reporting
-   - ✅ **Features**: Configurable grid layout, individual chord labeling, custom DPI, graceful error handling for invalid chords
+   - ✅ **Input**: `fingering_specs` array (1-20 items), layout options (columns 1-8), format (PNG), DPI settings (72-600), name inclusion toggle
+   - ✅ **Output**: Base64-encoded PNG data containing chord diagram(s) with success/failure reporting
+   - ✅ **Features**: Single tool handles both individual and grid layouts, configurable parameters, file saving option
 
 #### Deliverables:
-- ✅ Enhanced `mcp_server.py` with `generate_chord_diagram_batch` tool (87 lines of new handler code)
-- ✅ Comprehensive integration tests for batch functionality (7 test cases covering success, failure, validation, and edge cases)
-- ✅ Real-world usage testing with various chord progressions and fingering specifications
+- ✅ Refactored `mcp_server.py` with consolidated `create_chord_diagram` tool
+- ✅ Updated test suite to reflect tool changes
+- ✅ Updated documentation (README.md, CLAUDE.md) to reflect simplified interface
 
 #### 📝 Implementation Results:
-- ✅ **Tool Integration**: Successfully added 5th MCP tool maintaining consistent API patterns
-- ✅ **Flexible Input**: Supports both chord symbols and custom fingering specifications with optional naming
-- ✅ **Error Resilience**: Processes valid chords even when some fail, providing detailed error reporting
-- ✅ **Performance**: Generates multi-chord images efficiently (15-21KB typical output)
-- ✅ **Testing**: All 7 batch-specific tests pass, maintaining 26/26 total MCP test suite success rate
+- ✅ **Simplified Interface**: Reduced from 5 to 4 MCP tools without losing functionality
+- ✅ **Better Design**: Single diagram tool that scales from 1 to 20 chords
+- ✅ **Maintained Compatibility**: All existing features preserved
+- ✅ **Cleaner API**: More intuitive tool naming and usage
+- ✅ **Documentation**: All docs updated to reflect the changes
 
 ## Key Requirements and Constraints
 

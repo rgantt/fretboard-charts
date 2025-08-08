@@ -283,12 +283,18 @@ Generate multiple fingerings for a chord with difficulty filtering.
 - `difficulty_filter` (number): Maximum difficulty 0.0-1.0 (optional)
 
 #### `create_chord_diagram`
-Generate visual chord diagrams in multiple formats.
+Generate visual chord diagram(s) in a single image. Supports 1-20 chords arranged in a grid layout.
 
 **Parameters:**
-- `chord_symbol` (string): Chord symbol OR fingering specification
-- `format` (string): Output format "png" or "svg" (default: "png")
-- `include_name` (boolean): Include chord name in diagram (default: true)
+- `fingering_specs` (array): Array of fingering specifications (1-20 items)
+  - Each spec contains:
+    - `positions`: Array of {string, fret, finger} objects
+    - `chord_name`: Optional name to display on diagram
+- `columns` (integer): Number of columns in grid layout (default: 4, range: 1-8)
+- `format` (string): Output format "png" (default: "png")
+- `dpi` (integer): Image resolution 72-600 (default: 150)
+- `include_names` (boolean): Include chord names in diagrams (default: true)
+- `file_path` (string): Optional file path to save the diagram
 
 #### `analyze_chord_progression`
 Analyze chord progressions with optimal fingering suggestions and voice leading.
@@ -305,15 +311,6 @@ Get detailed music theory information about a chord.
 - `chord_symbol` (string): Chord to analyze
 - `include_theory` (boolean): Include interval analysis (default: true)
 - `include_alternatives` (boolean): Include alternative voicings (default: true)
-
-#### `create_batch_chord_diagram`
-Create diagrams for multiple chords at once.
-
-**Parameters:**
-- `chord_list` (array): List of chord symbols OR `fingering_specs` array
-- `format` (string): Output format "png" or "svg" (default: "png")
-- `dpi` (integer): Image resolution 72-600 (default: 150)
-- `include_names` (boolean): Include chord names in diagrams (default: true)
 
 ### Example Usage with Claude
 

@@ -87,21 +87,19 @@ from src.chord_patterns import ChordPatternDatabase
 
 ## MCP Server Details
 
-### Available MCP Tools
+### Available MCP Tools (4 tools after simplification)
 1. **`generate_chord_fingerings`**: Generate fingerings for a chord
    - Parameters: `chord_symbol`, `max_results`, `difficulty_filter`
    
-2. **`create_chord_diagram`**: Create visual chord diagram
-   - Parameters: `chord_symbol` OR `fingering_spec`, `format`, `include_name`, `file_path`
+2. **`create_chord_diagram`**: Create visual chord diagram(s) - supports single or multiple
+   - Parameters: `fingering_specs` (array of 1-20 items), `columns`, `dpi`, `format`, `include_names`, `file_path`
+   - Note: This tool replaced both the old single diagram and batch diagram tools
    
 3. **`analyze_chord_progression`**: Analyze chord progressions
    - Parameters: `chord_list`, `analysis_type`, `max_per_chord`
    
 4. **`get_chord_info`**: Get chord theory information
    - Parameters: `chord_symbol`, `include_theory`, `include_alternatives`
-   
-5. **`generate_chord_diagram_batch`**: Create multiple chord diagrams in grid
-   - Parameters: `fingering_specs`, `columns`, `dpi`, `format`, `include_names`, `file_path`
 
 ### MCP Configuration Example
 ```json
